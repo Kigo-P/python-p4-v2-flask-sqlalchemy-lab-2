@@ -11,22 +11,60 @@ metadata = MetaData(naming_convention={
 db = SQLAlchemy(metadata=metadata)
 
 
-class Customer(db.Model):
+class Customer(db.Model, SerializerMixin):
     __tablename__ = 'customers'
+    # creating serialize rules which is a tuple
+    serialize_rules = ("-reviews.customer", )
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
+
+    # a relationship to map customers to related reviews
+    reviews = db.relationship("Review", back_populates = "customer", cascade = "all, delete-orphan")
+
+    # Association proxy for the items using the reviews
+    items = association_proxy("reviews", "item", creator=lambda item_obj: Review(item = item_obj))
 
     def __repr__(self):
         return f'<Customer {self.id}, {self.name}>'
 
 
-class Item(db.Model):
+class Item(db.Model, SerializerMixin):
     __tablename__ = 'items'
+    # creating serialize rules which is a tuple
+    serialize_rules = ("-reviews.item", )
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     price = db.Column(db.Float)
 
+    #  a relationship to map the item to the related reviews
+    reviews = db.relationship("Review", back_populates = "item", cascade = "all, delete-orphan")
+
+
     def __repr__(self):
         return f'<Item {self.id}, {self.name}, {self.price}>'
+    
+# Creating a model called Review
+class Review(db.Model, SerializerMixin):
+    # Creating a table called reviews
+    __tablename__ = "reviews"
+    # creating serialize rules which is a tuple
+    serialize_rules = ("-customer.reviews", "-item.reviews",  )
+
+    # Creating columns for the table reviews
+    id = db.Column(db.Integer, primary_key = True)
+    comment = db.Column(db.String)
+    # Foreign key to store  the customer id
+    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"))
+    # Foreign key to store the item id
+    item_id = db.Column(db.Integer, db.ForeignKey("items.id"))
+
+    # a relationship to map the reviews to related customer
+    customer = db.relationship("Customer", back_populates = "reviews")
+    #  a relationship to map the reviews to a related item
+    item = db.relationship("Item", back_populates = "reviews")
+
+    #  creating a string representation of the data
+    def __repr__(self):
+        f"<Review {self.id}, {self.comment}>"
